@@ -1,0 +1,22 @@
+# File: docker-compose.yml
+version: '3.8' # Use a recent version
+
+services:
+  postgres:
+    image: postgres:15 # Or specify your desired PostgreSQL version
+    container_name: blogapp-postgres # A friendly name for the container
+    environment:
+      POSTGRES_DB: blogdb # Name of the database to create
+      POSTGRES_USER: bloguser # Username for the database
+      POSTGRES_PASSWORD: blogsecret # Password for the database user (use secrets management in production!)
+    ports:
+      - '5432:5432' # Map host port 5432 to container port 5432
+    volumes:
+      # Mount the SQL script into the initialization directory
+      - ./commands.sql:/docker-entrypoint-initdb.d/commands.sql
+      # Named volume for persistent data storage
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped # Keep the container running unless manually stopped
+
+volumes:
+  postgres_data: # Define the named volume for persistence
