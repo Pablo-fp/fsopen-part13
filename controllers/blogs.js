@@ -13,6 +13,22 @@ router.get('/', async (req, res, next) => {
   }
 });
 
+// GET /api/blogs/:id - Get a single blog
+router.get('/:id', async (req, res, next) => {
+  const id = req.params.id;
+  try {
+    const blog = await Blog.findByPk(id);
+    if (blog) {
+      console.log('Found blog:', blog.toJSON());
+      res.json(blog);
+    } else {
+      res.status(404).json({ error: `Blog with id ${id} not found` });
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
 // POST /api/blogs - Add a new blog
 router.post('/', async (req, res, next) => {
   try {
@@ -57,18 +73,45 @@ router.delete('/:id', async (req, res, next) => {
   }
 });
 
-// Optional: GET /api/blogs/:id - Get a single blog (demonstrates findByPk)
-router.get('/:id', async (req, res, next) => {
+// PUT /api/blogs/:id - Update the like count of a blog
+router.put('/:id', async (req, res, next) => {
   const id = req.params.id;
+  const newLikes = req.body.likes; // Get the new like count from the request body
+
+  // Validate input: check if 'likes' is provided and is a number
+  if (
+    newLikes === undefined ||
+    typeof newLikes !== 'number' ||
+    !Number.isInteger(newLikes) ||
+    newLikes < 0
+  ) {
+    return res
+      .status(400)
+      .json({
+        error:
+          'Missing or invalid "likes" field in request body. It must be a non-negative integer.'
+      });
+  }
+
   try {
+    // Find the blog by its primary key
     const blog = await Blog.findByPk(id);
+
     if (blog) {
-      console.log('Found blog:', blog.toJSON());
+      // If the blog exists, update its 'likes' property
+      blog.likes = newLikes;
+      // Save the changes back to the database
+      await blog.save();
+
+      console.log(`Updated likes for blog ${id} to ${newLikes}`);
+      // Respond with the updated blog object
       res.json(blog);
     } else {
+      // If the blog doesn't exist, return a 404 Not Found status
       res.status(404).json({ error: `Blog with id ${id} not found` });
     }
   } catch (error) {
+    // Pass any other errors (like database errors) to the error handling middleware
     next(error);
   }
 });
