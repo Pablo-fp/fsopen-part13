@@ -19,22 +19,30 @@ app.get('/', (req, res) => {
   res.send('Blog Application API is running!');
 });
 
-// Basic Error Handling Middleware (Add this AFTER your routes)
-// eslint-disable-next-line no-unused-vars
+// --- Centralized Error Handling Middleware ---
+// This MUST come AFTER your routes
 const errorHandler = (error, req, res, next) => {
-  console.error('ERROR HANDLER:', error.message); // Log the error message
+  console.error('ERROR:', error.name, '-', error.message); // Log error details for debugging
 
-  // Handle specific known errors or provide a generic response
+  // ... (rest of your errorHandler logic remains the same) ...
+  // Handle SequelizeValidationErrors, DatabaseErrors, etc.
+
   if (error.name === 'SequelizeValidationError') {
-    return res.status(400).send({ error: error.message });
-  } else if (error.name === 'SequelizeDatabaseError') {
-    // Log more details for database errors if needed, but send generic message
-    console.error('DB Error Details:', error);
-    return res.status(500).send({ error: 'Database error occurred' });
+    return res
+      .status(400)
+      .json({ error: 'Validation failed: ' + error.message });
   }
-
-  // Generic internal server error for unhandled cases
-  return res.status(500).send({ error: 'Something went wrong!' });
+  // ... other specific error checks ...
+  if (error.name === 'SequelizeDatabaseError') {
+    console.error('DB Error Details:', error);
+    return res.status(500).json({ error: 'A database error occurred' });
+  }
+  if (error.status) {
+    return res.status(error.status).json({ error: error.message });
+  }
+  return res
+    .status(500)
+    .json({ error: 'An unexpected internal server error occurred' });
 };
 
 app.use(errorHandler);
