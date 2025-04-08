@@ -9,19 +9,23 @@ const sequelize = new Sequelize(
   {
     host: process.env.POSTGRES_HOST,
     dialect: 'postgres',
-    logging: false // Disable logging SQL queries or set to console.log for debugging
-    // logging: (...msg) => console.log('SEQUELIZE:', msg), // Example detailed logging
+    logging: false // Disable logging or set to console.log
   }
 );
 
-// Function to test connection
+// Function to test connection and sync models
 const connectToDatabase = async () => {
   try {
     await sequelize.authenticate();
     console.log('Database connection established successfully.');
+    // Sync all defined models to the DB.
+    // Creates tables if they don't exist. Does nothing if they exist.
+    // Use { alter: true } or { force: true } cautiously during development if needed.
+    await sequelize.sync({ alter: true }); // Use alter:true to modify tables to match model (USE WITH CAUTION)
+    // await sequelize.sync(); // Safer option: only creates tables if they don't exist
+    console.log('All models were synchronized successfully.');
   } catch (error) {
-    console.error('Unable to connect to the database:', error);
-    // Exit process if connection fails, as the app can't function
+    console.error('Unable to connect to the database or sync models:', error);
     process.exit(1);
   }
 };

@@ -1,38 +1,41 @@
 // File: index.js
 require('dotenv').config();
+// NO require('express-async-errors'); needed here for Express 5
 const express = require('express');
-const { connectToDatabase } = require('./util/db'); // Import connection function
-const blogsRouter = require('./controllers/blogs'); // Import blog routes
-require('./models/blog'); // Import model to ensure Sequelize knows about it
+const { connectToDatabase } = require('./util/db');
+const blogsRouter = require('./controllers/blogs');
+const usersRouter = require('./controllers/users'); // <-- Import users router
+require('./models/blog'); // Ensure models are registered before sync
+require('./models/user'); // <-- Import user model
 
 const app = express();
-const PORT = process.env.PORT || 3001; // Use port from .env or default 3001
+const PORT = process.env.PORT || 3001;
 
-// Middleware to parse JSON request bodies
 app.use(express.json());
 
-// Mount the blogs router under the /api/blogs path
+// Mount routers
 app.use('/api/blogs', blogsRouter);
+app.use('/api/users', usersRouter); // <-- Mount users router
 
-// Simple root route for testing server status
 app.get('/', (req, res) => {
   res.send('Blog Application API is running!');
 });
 
-// --- Centralized Error Handling Middleware ---
-// This MUST come AFTER your routes
+// Centralized Error Handling Middleware (remains the same)
 const errorHandler = (error, req, res, next) => {
-  console.error('ERROR:', error.name, '-', error.message); // Log error details for debugging
-
-  // ... (rest of your errorHandler logic remains the same) ...
-  // Handle SequelizeValidationErrors, DatabaseErrors, etc.
+  console.error('ERROR:', error.name, '-', error.message);
 
   if (error.name === 'SequelizeValidationError') {
-    return res
-      .status(400)
-      .json({ error: 'Validation failed: ' + error.message });
+    // Extract specific validation messages for better client feedback
+    const messages = error.errors.map((err) => err.message).join('. ');
+    return res.status(400).json({ error: `Validation failed: ${messages}` });
   }
-  // ... other specific error checks ...
+  if (error.name === 'SequelizeUniqueConstraintError') {
+    const messages = error.errors
+      .map((e) => `${e.path} must be unique`)
+      .join('. ');
+    return res.status(400).json({ error: `Conflict: ${messages}` });
+  }
   if (error.name === 'SequelizeDatabaseError') {
     console.error('DB Error Details:', error);
     return res.status(500).json({ error: 'A database error occurred' });
@@ -44,16 +47,14 @@ const errorHandler = (error, req, res, next) => {
     .status(500)
     .json({ error: 'An unexpected internal server error occurred' });
 };
-
 app.use(errorHandler);
 
-// Function to start the server after connecting to DB
+// Server Start Logic (remains the same)
 const start = async () => {
-  await connectToDatabase(); // Ensure DB connection before starting server
+  await connectToDatabase(); // This now also handles sequelize.sync()
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
 };
 
-// Start the application
 start();
