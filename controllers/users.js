@@ -1,7 +1,7 @@
 // filepath: c:\Users\pablo\Desktop\FSOPEN\fsopen-part13\controllers\users.js
 const router = require('express').Router();
 const bcrypt = require('bcrypt');
-const User = require('../models/user'); // Adjust path if needed
+const { User } = require('../models'); // Adjust path if needed
 
 // POST /api/users - Add a new user
 router.post('/', async (req, res) => {

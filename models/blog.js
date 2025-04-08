@@ -28,6 +28,14 @@ Blog.init(
       type: DataTypes.INTEGER,
       defaultValue: 0, // Match DEFAULT 0 constraint
       allowNull: false // Match NOT NULL constraint (often implied by DEFAULT)
+    },
+    userId: {
+      type: DataTypes.INTEGER,
+      allowNull: false, // Blog must belong to a user
+      references: {
+        model: 'users', // table name
+        key: 'id'
+      }
     }
   },
   {
@@ -36,7 +44,7 @@ Blog.init(
     modelName: 'Blog', // We need to choose the model name
     tableName: 'blogs', // Explicitly define table name
     timestamps: false, // Don't expect createdAt/updatedAt fields
-    underscored: false // Use camelCase attribute names (like 'likes')
+    underscored: true // Use camelCase attribute names (like 'likes')
     // If your DB columns were snake_case (like 'created_at'), set this to true
   }
 );

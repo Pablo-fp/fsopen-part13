@@ -120,12 +120,10 @@ router.put('/:id', requireAuth, async (req, res) => {
     !Number.isInteger(newLikes) ||
     newLikes < 0
   ) {
-    return res
-      .status(400)
-      .json({
-        error:
-          'Missing or invalid "likes" field (must be a non-negative integer).'
-      });
+    return res.status(400).json({
+      error:
+        'Missing or invalid "likes" field (must be a non-negative integer).'
+    });
   }
 
   const blog = await Blog.findByPk(blogId);

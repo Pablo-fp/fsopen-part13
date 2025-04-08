@@ -1,8 +1,10 @@
 // filepath: c:\Users\pablo\Desktop\FSOPEN\fsopen-part13\controllers\login.js
+require('dotenv').config();
+
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const router = require('express').Router();
-const User = require('../models/user');
+const { User } = require('../models');
 
 router.post('/', async (req, res) => {
   const { username, password } = req.body;
@@ -13,7 +15,9 @@ router.post('/', async (req, res) => {
       .json({ error: 'Username and password are required' });
   }
 
-  const user = await User.findOne({ where: { username } });
+  const user = await User.scope('withPassword').findOne({
+    where: { username: username }
+  });
   const passwordCorrect =
     user === null ? false : await bcrypt.compare(password, user.passwordHash);
 

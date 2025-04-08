@@ -43,9 +43,20 @@ User.init(
   {
     sequelize,
     modelName: 'User',
+
     tableName: 'users',
     timestamps: true,
-    underscored: true
+    underscored: true,
+    defaultScope: {
+      // Exclude passwordHash by default for security reasons
+      attributes: { exclude: ['passwordHash'] }
+    },
+    scopes: {
+      // This scope disables the exclusion so that passwordHash is included
+      withPassword: {
+        attributes: {}
+      }
+    }
   }
 );
 
