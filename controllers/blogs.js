@@ -1,84 +1,119 @@
 // File: controllers/blogs.js
 const router = require('express').Router();
-const Blog = require('../models/blog'); // Adjust path if needed
+const { Blog, User } = require('../models'); // Assuming index.js in models exports all
+// Or: const Blog = require('../models/blog'); const User = require('../models/user');
 
-// GET /api/blogs - List all blogs
-router.get('/', async (req, res, next) => {
-  try {
-    const blogs = await Blog.findAll();
-    console.log('Fetched blogs:', JSON.stringify(blogs, null, 2)); // Log fetched blogs
-    res.json(blogs);
-  } catch (error) {
-    next(error); // Pass error to error handling middleware
+// Middleware specifically for routes needing authenticated user
+const requireAuth = (req, res, next) => {
+  if (!req.decodedToken || !req.decodedToken.id) {
+    return res.status(401).json({ error: 'Token missing or invalid' });
+  }
+  // Optional: Check if req.user exists if using userFinder middleware globally
+  // if (!req.user) {
+  //     return res.status(401).json({ error: 'User not found for token' });
+  // }
+  next();
+};
+
+// GET /api/blogs - List all blogs (Include User Info)
+router.get('/', async (req, res) => {
+  const blogs = await Blog.findAll({
+    include: {
+      // Eager load the associated User
+      model: User,
+      attributes: ['name', 'username'] // Select only specific user fields
+    },
+    order: [
+      // Optional: Order blogs, e.g., by likes descending
+      ['likes', 'DESC']
+    ]
+  });
+  res.json(blogs);
+});
+
+// POST /api/blogs - Add a new blog (Protected Route)
+router.post('/', requireAuth, async (req, res) => {
+  // <-- Apply requireAuth middleware
+  const { author, url, title, likes } = req.body;
+
+  if (!url || !title) {
+    return res
+      .status(400)
+      .json({ error: 'URL and Title are required fields.' });
+  }
+
+  // Get user ID from the verified token payload
+  const userId = req.decodedToken.id;
+
+  // Create the blog and associate it with the user
+  const newBlog = await Blog.create({
+    author: author || null, // Allow author to be optional if desired
+    url,
+    title,
+    likes: likes || 0, // Default likes if not provided
+    userId: userId // <-- Associate with the logged-in user
+  });
+
+  // Fetch the created blog again including the user details to return
+  const blogToReturn = await Blog.findByPk(newBlog.id, {
+    include: {
+      model: User,
+      attributes: ['name', 'username']
+    }
+  });
+
+  console.log('Created blog:', blogToReturn.toJSON());
+  res.status(201).json(blogToReturn);
+});
+
+// GET /api/blogs/:id - Get a single blog (Include User Info)
+router.get('/:id', async (req, res) => {
+  const blog = await Blog.findByPk(req.params.id, {
+    include: {
+      model: User,
+      attributes: ['name', 'username']
+    }
+  });
+  if (blog) {
+    res.json(blog);
+  } else {
+    res.status(404).json({ error: `Blog with id ${req.params.id} not found` });
   }
 });
 
-// GET /api/blogs/:id - Get a single blog
-router.get('/:id', async (req, res, next) => {
-  const id = req.params.id;
-  try {
-    const blog = await Blog.findByPk(id);
-    if (blog) {
-      console.log('Found blog:', blog.toJSON());
-      res.json(blog);
-    } else {
-      res.status(404).json({ error: `Blog with id ${id} not found` });
-    }
-  } catch (error) {
-    next(error);
+// DELETE /api/blogs/:id - Delete a blog (Protected - only owner should delete)
+router.delete('/:id', requireAuth, async (req, res) => {
+  // <-- Apply requireAuth
+  const blogId = req.params.id;
+  const userId = req.decodedToken.id; // ID of the user making the request
+
+  const blog = await Blog.findByPk(blogId);
+
+  if (!blog) {
+    return res.status(404).json({ error: `Blog with id ${blogId} not found` });
   }
+
+  // Check if the logged-in user is the owner of the blog
+  if (blog.userId !== userId) {
+    return res
+      .status(403)
+      .json({ error: 'Forbidden: You can only delete your own blogs' });
+  }
+
+  // If owner, proceed with deletion
+  await blog.destroy();
+  console.log(`User ${userId} deleted blog ${blogId}`);
+  res.status(204).end();
 });
 
-// POST /api/blogs - Add a new blog
-router.post('/', async (req, res, next) => {
-  try {
-    // Basic validation: Check if required fields are present
-    const { author, url, title, likes } = req.body;
-    if (!url || !title) {
-      return res
-        .status(400)
-        .json({ error: 'URL and Title are required fields.' });
-    }
+// PUT /api/blogs/:id - Update likes (Can be done by anyone logged in, or check ownership)
+// For simplicity, let's allow any logged-in user to update likes for now.
+// If only owner should update, add ownership check similar to DELETE.
+router.put('/:id', requireAuth, async (req, res) => {
+  // <-- Apply requireAuth
+  const blogId = req.params.id;
+  const newLikes = req.body.likes;
 
-    // Create blog using request body data
-    // Sequelize automatically maps matching keys (author, url, title, likes)
-    const newBlog = await Blog.create(req.body);
-    console.log('Created blog:', newBlog.toJSON()); // Log created blog
-    res.status(201).json(newBlog); // Respond with the newly created blog and 201 status
-  } catch (error) {
-    // Handle potential validation errors from Sequelize or other DB errors
-    if (error.name === 'SequelizeValidationError') {
-      return res.status(400).json({ error: error.message });
-    }
-    // Pass other errors to the generic error handler
-    next(error);
-  }
-});
-
-// DELETE /api/blogs/:id - Delete a blog
-router.delete('/:id', async (req, res, next) => {
-  const id = req.params.id;
-  try {
-    const blog = await Blog.findByPk(id); // Find blog by primary key
-
-    if (blog) {
-      await blog.destroy(); // Delete the blog instance
-      console.log(`Deleted blog with id: ${id}`);
-      res.status(204).end(); // Send 204 No Content on successful deletion
-    } else {
-      res.status(404).json({ error: `Blog with id ${id} not found` }); // Send 404 if not found
-    }
-  } catch (error) {
-    next(error); // Pass error to error handling middleware
-  }
-});
-
-// PUT /api/blogs/:id - Update the like count of a blog
-router.put('/:id', async (req, res, next) => {
-  const id = req.params.id;
-  const newLikes = req.body.likes; // Get the new like count from the request body
-
-  // Validate input: check if 'likes' is provided and is a number
   if (
     newLikes === undefined ||
     typeof newLikes !== 'number' ||
@@ -89,30 +124,30 @@ router.put('/:id', async (req, res, next) => {
       .status(400)
       .json({
         error:
-          'Missing or invalid "likes" field in request body. It must be a non-negative integer.'
+          'Missing or invalid "likes" field (must be a non-negative integer).'
       });
   }
 
-  try {
-    // Find the blog by its primary key
-    const blog = await Blog.findByPk(id);
+  const blog = await Blog.findByPk(blogId);
 
-    if (blog) {
-      // If the blog exists, update its 'likes' property
-      blog.likes = newLikes;
-      // Save the changes back to the database
-      await blog.save();
+  if (blog) {
+    blog.likes = newLikes;
+    await blog.save();
 
-      console.log(`Updated likes for blog ${id} to ${newLikes}`);
-      // Respond with the updated blog object
-      res.json(blog);
-    } else {
-      // If the blog doesn't exist, return a 404 Not Found status
-      res.status(404).json({ error: `Blog with id ${id} not found` });
-    }
-  } catch (error) {
-    // Pass any other errors (like database errors) to the error handling middleware
-    next(error);
+    // Fetch again including user details
+    const updatedBlog = await Blog.findByPk(blog.id, {
+      include: {
+        model: User,
+        attributes: ['name', 'username']
+      }
+    });
+
+    console.log(
+      `User ${req.decodedToken.id} updated likes for blog ${blogId} to ${newLikes}`
+    );
+    res.json(updatedBlog);
+  } else {
+    res.status(404).json({ error: `Blog with id ${blogId} not found` });
   }
 });
 

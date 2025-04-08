@@ -22,17 +22,23 @@ User.init(
     username: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: { msg: 'Username (email) must be unique' }, // Update unique message slightly
+      unique: { msg: 'Username (email) must be unique' },
       validate: {
         notEmpty: { msg: 'Username (email) cannot be empty' },
         notNull: { msg: 'Username (email) is required' },
         isEmail: {
-          // <-- ADD THIS VALIDATOR
-          msg: 'Validation failed: Username must be a valid email address' // Custom message for isEmail failure
+          msg: 'Validation failed: Username must be a valid email address'
         }
       }
+    },
+    passwordHash: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        notEmpty: { msg: 'Password is required' },
+        notNull: { msg: 'Password is required' }
+      }
     }
-    // createdAt and updatedAt are automatically added by Sequelize
   },
   {
     sequelize,

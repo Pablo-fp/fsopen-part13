@@ -1,29 +1,34 @@
-// File: controllers/users.js
+// filepath: c:\Users\pablo\Desktop\FSOPEN\fsopen-part13\controllers\users.js
 const router = require('express').Router();
+const bcrypt = require('bcrypt');
 const User = require('../models/user'); // Adjust path if needed
 
 // POST /api/users - Add a new user
 router.post('/', async (req, res) => {
-  // Basic check for required fields before hitting the DB
-  // Note: Sequelize validation will also catch this, but early checks can be clearer.
-  const { name, username } = req.body;
-  if (!name || !username) {
+  const { name, username, password } = req.body;
+
+  if (!name || !username || !password) {
     return res
       .status(400)
-      .json({ error: 'Name and username are required fields.' });
+      .json({ error: 'Name, username and password are required fields.' });
   }
 
-  // Let express-async-errors handle potential errors from User.create
-  // (like unique constraint violation or other validation errors)
-  const newUser = await User.create({ name, username });
+  if (password.length < 3) {
+    return res
+      .status(400)
+      .json({ error: 'Password must be at least 3 characters long.' });
+  }
+
+  const saltRounds = 10;
+  const passwordHash = await bcrypt.hash(password, saltRounds);
+
+  const newUser = await User.create({ name, username, passwordHash });
   console.log('Created user:', newUser.toJSON());
-  // Timestamps (createdAt, updatedAt) are automatically set by Sequelize
   res.status(201).json(newUser);
 });
 
 // GET /api/users - List all users
 router.get('/', async (req, res) => {
-  // Let express-async-errors handle potential errors from User.findAll
   const users = await User.findAll();
   console.log('Fetched users:', JSON.stringify(users, null, 2));
   res.json(users);
@@ -31,10 +36,9 @@ router.get('/', async (req, res) => {
 
 // PUT /api/users/:username - Change a username
 router.put('/:username', async (req, res) => {
-  const targetUsername = req.params.username; // Username to find the user by
-  const newUsername = req.body.username; // The new username from the request body
+  const targetUsername = req.params.username;
+  const newUsername = req.body.username;
 
-  // Validate the new username input
   if (
     !newUsername ||
     typeof newUsername !== 'string' ||
@@ -46,24 +50,17 @@ router.put('/:username', async (req, res) => {
     });
   }
 
-  // Find the user by their current username
   const user = await User.findOne({ where: { username: targetUsername } });
 
   if (user) {
-    // Update the username
-    user.username = newUsername.trim(); // Trim whitespace just in case
-
-    // Let express-async-errors handle potential errors from user.save()
-    // (like unique constraint violation if the new username already exists)
-    await user.save(); // This will automatically update the 'updatedAt' timestamp
-
+    user.username = newUsername.trim();
+    await user.save();
     console.log(
       `Updated username for user ID ${user.id} from ${targetUsername} to ${newUsername}`
     );
     console.log('Updated user:', user.toJSON());
-    res.json(user); // Respond with the updated user object
+    res.json(user);
   } else {
-    // If the user with the target username wasn't found
     res
       .status(404)
       .json({ error: `User with username '${targetUsername}' not found.` });
