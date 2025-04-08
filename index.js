@@ -15,7 +15,7 @@ app.use(express.json());
 
 // Mount routers
 app.use('/api/blogs', blogsRouter);
-app.use('/api/users', usersRouter); // <-- Mount users router
+app.use('/api/users', usersRouter);
 
 app.get('/', (req, res) => {
   res.send('Blog Application API is running!');
@@ -26,9 +26,11 @@ const errorHandler = (error, req, res, next) => {
   console.error('ERROR:', error.name, '-', error.message);
 
   if (error.name === 'SequelizeValidationError') {
-    // Extract specific validation messages for better client feedback
-    const messages = error.errors.map((err) => err.message).join('. ');
-    return res.status(400).json({ error: `Validation failed: ${messages}` });
+    // Extract the specific error messages from the Sequelize error object
+    const messages = error.errors.map((err) => err.message);
+    console.error('Validation Errors:', messages); // Log specific validation messages server-side
+    // Respond with the array of validation error messages as requested
+    return res.status(400).json({ error: messages });
   }
   if (error.name === 'SequelizeUniqueConstraintError') {
     const messages = error.errors

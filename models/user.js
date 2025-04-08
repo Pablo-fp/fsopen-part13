@@ -12,48 +12,35 @@ User.init(
       autoIncrement: true
     },
     name: {
-      type: DataTypes.STRING, // STRING is usually fine unless you expect very long names
+      type: DataTypes.STRING,
       allowNull: false,
       validate: {
-        notEmpty: {
-          msg: 'User name cannot be empty' // Custom validation message
-        },
-        notNull: {
-          msg: 'User name is required'
-        }
+        notEmpty: { msg: 'User name cannot be empty' },
+        notNull: { msg: 'User name is required' }
       }
     },
     username: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: {
-        // Ensure usernames are unique
-        msg: 'Username must be unique'
-      },
+      unique: { msg: 'Username (email) must be unique' }, // Update unique message slightly
       validate: {
-        notEmpty: {
-          msg: 'Username cannot be empty'
-        },
-        notNull: {
-          msg: 'Username is required'
+        notEmpty: { msg: 'Username (email) cannot be empty' },
+        notNull: { msg: 'Username (email) is required' },
+        isEmail: {
+          // <-- ADD THIS VALIDATOR
+          msg: 'Validation failed: Username must be a valid email address' // Custom message for isEmail failure
         }
-        // Optional: Add more validation like email format if username is an email
-        // isEmail: true,
       }
     }
     // createdAt and updatedAt are automatically added by Sequelize
-    // because timestamps: true (which is the default)
   },
   {
     sequelize,
     modelName: 'User',
     tableName: 'users',
-    timestamps: true, // Explicitly true (default), enables createdAt and updatedAt
-    underscored: true // Use snake_case for columns (e.g., created_at, updated_at)
+    timestamps: true,
+    underscored: true
   }
 );
-
-// We will use sequelize.sync() in the main app or connection utility
-// instead of syncing individual models here.
 
 module.exports = User;
