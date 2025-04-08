@@ -54,6 +54,10 @@ router.post('/', requireAuth, async (req, res) => {
     userId: userId // <-- Associate with the logged-in user
   });
 
+  // Update the user so that its associated blogs collection is updated.
+  const user = await User.findByPk(userId);
+  await user.addBlog(newBlog);
+
   // Fetch the created blog again including the user details to return
   const blogToReturn = await Blog.findByPk(newBlog.id, {
     include: {

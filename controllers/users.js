@@ -1,7 +1,7 @@
 // filepath: c:\Users\pablo\Desktop\FSOPEN\fsopen-part13\controllers\users.js
 const router = require('express').Router();
 const bcrypt = require('bcrypt');
-const { User } = require('../models'); // Adjust path if needed
+const { User, Blog } = require('../models'); // Adjust path if needed
 
 // POST /api/users - Add a new user
 router.post('/', async (req, res) => {
@@ -21,15 +21,19 @@ router.post('/', async (req, res) => {
 
   const saltRounds = 10;
   const passwordHash = await bcrypt.hash(password, saltRounds);
-
   const newUser = await User.create({ name, username, passwordHash });
   console.log('Created user:', newUser.toJSON());
   res.status(201).json(newUser);
 });
 
-// GET /api/users - List all users
+// GET /api/users - List all users including their blogs
 router.get('/', async (req, res) => {
-  const users = await User.findAll();
+  const users = await User.findAll({
+    include: {
+      model: Blog,
+      attributes: ['id', 'title', 'author', 'url', 'likes']
+    }
+  });
   console.log('Fetched users:', JSON.stringify(users, null, 2));
   res.json(users);
 });
