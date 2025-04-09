@@ -5,7 +5,9 @@ const { connectToDatabase } = require('./util/db');
 const { tokenExtractor, userFinder } = require('./util/middleware'); // <-- Import middleware
 const blogsRouter = require('./controllers/blogs');
 const usersRouter = require('./controllers/users');
-const loginRouter = require('./controllers/login'); // <-- Import login router
+const loginRouter = require('./controllers/login');
+const authorsRouter = require('./controllers/authors');
+
 require('./models');
 
 const app = express();
@@ -23,6 +25,7 @@ app.use(tokenExtractor);
 app.use('/api/login', loginRouter); // Login doesn't need token check
 app.use('/api/users', usersRouter);
 app.use('/api/blogs', blogsRouter);
+app.use('/api/authors', authorsRouter);
 
 app.get('/', (req, res) => {
   res.send('Blog Application API is running!');
