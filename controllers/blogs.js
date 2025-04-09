@@ -1,5 +1,7 @@
 // File: controllers/blogs.js
 const router = require('express').Router();
+const { Op } = require('sequelize');
+
 const { Blog, User } = require('../models'); // Assuming index.js in models exports all
 // Or: const Blog = require('../models/blog'); const User = require('../models/user');
 
@@ -15,16 +17,20 @@ const requireAuth = (req, res, next) => {
   next();
 };
 
-// GET /api/blogs - List all blogs (Include User Info)
+// GET /api/blogs - List all blogs (Include User Info) with optional filtering by keyword in title
 router.get('/', async (req, res) => {
+  const search = req.query.search;
+  const filter = search ? { title: { [Op.iLike]: `%${search}%` } } : {};
+
   const blogs = await Blog.findAll({
+    where: filter,
     include: {
       // Eager load the associated User
       model: User,
-      attributes: ['name', 'username'] // Select only specific user fields
+      attributes: ['name', 'username']
     },
     order: [
-      // Optional: Order blogs, e.g., by likes descending
+      // Order blogs, e.g., by likes descending
       ['likes', 'DESC']
     ]
   });
