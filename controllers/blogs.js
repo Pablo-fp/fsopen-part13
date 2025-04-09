@@ -20,7 +20,14 @@ const requireAuth = (req, res, next) => {
 // GET /api/blogs - List all blogs (Include User Info) with optional filtering by keyword in title
 router.get('/', async (req, res) => {
   const search = req.query.search;
-  const filter = search ? { title: { [Op.iLike]: `%${search}%` } } : {};
+  const filter = search
+    ? {
+        [Op.or]: [
+          { title: { [Op.iLike]: `%${search}%` } },
+          { author: { [Op.iLike]: `%${search}%` } }
+        ]
+      }
+    : {};
 
   const blogs = await Blog.findAll({
     where: filter,
