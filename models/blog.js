@@ -43,8 +43,8 @@ Blog.init(
     sequelize, // We need to pass the connection instance
     modelName: 'Blog', // We need to choose the model name
     tableName: 'blogs', // Explicitly define table name
-    timestamps: false, // Don't expect createdAt/updatedAt fields
-    underscored: true // Use camelCase attribute names (like 'likes')
+    timestamps: true,
+    underscored: true
     // If your DB columns were snake_case (like 'created_at'), set this to true
   }
 );

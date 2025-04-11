@@ -1,0 +1,9 @@
+{
+  "development": {
+    "username": "bloguser",
+    "password": "blogsecret",
+    "database": "blogdb",
+    "host": "localhost",
+    "dialect": "postgres"
+  }
+}
