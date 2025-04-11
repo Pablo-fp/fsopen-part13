@@ -36,6 +36,25 @@ Blog.init(
         model: 'users', // table name
         key: 'id'
       }
+    },
+    year: {
+      // <-- ADD THIS BLOCK
+      type: DataTypes.INTEGER,
+      allowNull: true, // Set to false if the year is mandatory
+      validate: {
+        min: {
+          args: [1991],
+          msg: 'Year must be 1991 or later.'
+        },
+        max: {
+          args: [new Date().getFullYear()], // Use current year as max
+          msg: `Year cannot be greater than the current year (${new Date().getFullYear()}).`
+        },
+        isInt: {
+          // Ensure it's an integer
+          msg: 'Year must be an integer.'
+        }
+      }
     }
   },
   {

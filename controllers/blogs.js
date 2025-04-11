@@ -45,42 +45,45 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/blogs - Add a new blog (Protected Route)
-router.post('/', requireAuth, async (req, res) => {
-  // <-- Apply requireAuth middleware
-  const { author, url, title, likes } = req.body;
+router.post('/', requireAuth, async (req, res, next) => {
+  // Add next for error handling
+  try {
+    // Wrap in try...catch
+    // <-- Apply requireAuth middleware
+    const { author, url, title, likes, year } = req.body; // <-- Add year
 
-  if (!url || !title) {
-    return res
-      .status(400)
-      .json({ error: 'URL and Title are required fields.' });
-  }
-
-  // Get user ID from the verified token payload
-  const userId = req.decodedToken.id;
-
-  // Create the blog and associate it with the user
-  const newBlog = await Blog.create({
-    author: author || null, // Allow author to be optional if desired
-    url,
-    title,
-    likes: likes || 0, // Default likes if not provided
-    userId: userId // <-- Associate with the logged-in user
-  });
-
-  // Update the user so that its associated blogs collection is updated.
-  const user = await User.findByPk(userId);
-  await user.addBlog(newBlog);
-
-  // Fetch the created blog again including the user details to return
-  const blogToReturn = await Blog.findByPk(newBlog.id, {
-    include: {
-      model: User,
-      attributes: ['name', 'username']
+    if (!url || !title) {
+      return res
+        .status(400)
+        .json({ error: 'URL and Title are required fields.' });
     }
-  });
 
-  console.log('Created blog:', blogToReturn.toJSON());
-  res.status(201).json(blogToReturn);
+    // Get user ID from the verified token payload
+    const userId = req.decodedToken.id;
+
+    // Create the blog and associate it with the user
+    const newBlog = await Blog.create({
+      author: author || null,
+      url,
+      title,
+      likes: likes || 0,
+      year: year, // <-- Pass the year
+      userId: userId
+    });
+
+    // Fetch the created blog again including the user details to return
+    const blogToReturn = await Blog.findByPk(newBlog.id, {
+      include: {
+        model: User,
+        attributes: ['name', 'username']
+      }
+    });
+
+    console.log('Created blog:', blogToReturn.toJSON());
+    res.status(201).json(blogToReturn);
+  } catch (error) {
+    next(error); // Pass errors to the centralized handler
+  }
 });
 
 // GET /api/blogs/:id - Get a single blog (Include User Info)
