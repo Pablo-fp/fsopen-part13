@@ -34,6 +34,7 @@ router.get('/', async (req, res) => {
     include: {
       // Eager load the associated User
       model: User,
+      as: 'user',
       attributes: ['name', 'username']
     },
     order: [
@@ -91,6 +92,7 @@ router.get('/:id', async (req, res) => {
   const blog = await Blog.findByPk(req.params.id, {
     include: {
       model: User,
+      as: 'user',
       attributes: ['name', 'username']
     }
   });
@@ -156,6 +158,7 @@ router.put('/:id', requireAuth, async (req, res) => {
     const updatedBlog = await Blog.findByPk(blog.id, {
       include: {
         model: User,
+        as: 'user',
         attributes: ['name', 'username']
       }
     });

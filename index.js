@@ -7,6 +7,7 @@ const blogsRouter = require('./controllers/blogs');
 const usersRouter = require('./controllers/users');
 const loginRouter = require('./controllers/login');
 const authorsRouter = require('./controllers/authors');
+const readingListsRouter = require('./controllers/readinglists');
 
 require('./models');
 
@@ -26,6 +27,7 @@ app.use('/api/login', loginRouter); // Login doesn't need token check
 app.use('/api/users', usersRouter);
 app.use('/api/blogs', blogsRouter);
 app.use('/api/authors', authorsRouter);
+app.use('/api/readinglists', readingListsRouter);
 
 app.get('/', (req, res) => {
   res.send('Blog Application API is running!');

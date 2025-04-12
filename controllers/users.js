@@ -1,7 +1,7 @@
 // filepath: c:\Users\pablo\Desktop\FSOPEN\fsopen-part13\controllers\users.js
 const router = require('express').Router();
 const bcrypt = require('bcrypt');
-const { User, Blog } = require('../models'); // Adjust path if needed
+const { User, Blog, ReadingList } = require('../models');
 
 // POST /api/users - Add a new user
 router.post('/', async (req, res) => {
@@ -31,11 +31,39 @@ router.get('/', async (req, res) => {
   const users = await User.findAll({
     include: {
       model: Blog,
-      attributes: ['id', 'title', 'author', 'url', 'likes']
+      as: 'readings',
+      attributes: ['id', 'title', 'author', 'url', 'likes'],
+      through: { attributes: [] }
     }
   });
   console.log('Fetched users:', JSON.stringify(users, null, 2));
   res.json(users);
+});
+
+router.get('/:id', async (req, res) => {
+  const userId = req.params.id;
+
+  const user = await User.findByPk(userId, {
+    attributes: { exclude: ['passwordHash', 'createdAt', 'updatedAt'] }, // Exclude unnecessary fields
+    include: [
+      {
+        model: Blog,
+        as: 'readings', // Use the alias defined in the association
+        attributes: { exclude: ['userId', 'createdAt', 'updatedAt'] }, // Exclude join table info from Blog attributes
+        through: {
+          // Specify attributes from the join table (ReadingList) if needed
+          attributes: [] // Exclude all attributes from ReadingList join table itself
+          // If you wanted to include the 'read' status: attributes: ['read', 'id']
+        }
+      }
+    ]
+  });
+
+  if (user) {
+    res.json(user);
+  } else {
+    res.status(404).json({ error: `User with id ${userId} not found` });
+  }
 });
 
 // PUT /api/users/:username - Change a username
