@@ -40,29 +40,47 @@ router.get('/', async (req, res) => {
   res.json(users);
 });
 
-router.get('/:id', async (req, res) => {
-  const userId = req.params.id;
+router.get('/:id', async (req, res, next) => {
+  // Add next for potential errors
+  try {
+    const userId = req.params.id;
+    const readFilter = req.query.read; // Get the 'read' query parameter
 
-  const user = await User.findByPk(userId, {
-    attributes: { exclude: ['passwordHash', 'createdAt', 'updatedAt'] }, // Exclude unnecessary fields
-    include: [
-      {
-        model: Blog,
-        as: 'readings', // Use the alias defined in the association
-        attributes: { exclude: ['userId', 'createdAt', 'updatedAt'] }, // Exclude join table info from Blog attributes
-        through: {
-          // Specify attributes from the join table (ReadingList) if needed
-          attributes: [] // Exclude all attributes from ReadingList join table itself
-          // If you wanted to include the 'read' status: attributes: ['read', 'id']
-        }
+    // Prepare the include options for the reading list
+    const includeOptions = {
+      model: Blog,
+      as: 'readings',
+      attributes: { exclude: ['userId', 'createdAt', 'updatedAt'] },
+      through: {
+        attributes: ['id', 'read'] // Include 'read' and 'id' from ReadingList
+        // Optionally add where clause based on query parameter
       }
-    ]
-  });
+    };
 
-  if (user) {
-    res.json(user);
-  } else {
-    res.status(404).json({ error: `User with id ${userId} not found` });
+    // Apply filtering based on the 'read' query parameter
+    if (readFilter !== undefined) {
+      // Check if the query parameter exists
+      const readValue = readFilter === 'true'; // Convert string "true" to boolean true, others to false
+      includeOptions.through.where = {
+        read: readValue
+      };
+    } else {
+      // If no filter, ensure we still get the 'read' status and id
+      // The default attributes: ['id', 'read'] already handles this
+    }
+
+    const user = await User.findByPk(userId, {
+      attributes: { exclude: ['passwordHash', 'createdAt', 'updatedAt'] },
+      include: [includeOptions] // Use the dynamically built include options
+    });
+
+    if (user) {
+      res.json(user);
+    } else {
+      res.status(404).json({ error: `User with id ${userId} not found` });
+    }
+  } catch (error) {
+    next(error); // Pass errors to the error handler
   }
 });
 
