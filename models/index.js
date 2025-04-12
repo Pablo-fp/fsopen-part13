@@ -1,6 +1,7 @@
 const Blog = require('./blog');
 const User = require('./user');
 const ReadingList = require('./readinglist');
+const Session = require('./session');
 
 // --- Define Associations ---
 
@@ -33,4 +34,8 @@ Blog.belongsToMany(User, {
   as: 'usersMarked' // Alias for the association (Users who marked this blog)
 });
 
-module.exports = { Blog, User, ReadingList };
+// User <-> Session (One-to-Many)
+User.hasMany(Session, { foreignKey: 'userId' });
+Session.belongsTo(User, { foreignKey: 'userId' });
+
+module.exports = { Blog, User, ReadingList, Session };

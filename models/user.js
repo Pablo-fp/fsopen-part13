@@ -38,6 +38,11 @@ User.init(
         notEmpty: { msg: 'Password is required' },
         notNull: { msg: 'Password is required' }
       }
+    },
+    disabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
     }
   },
   {
@@ -49,13 +54,17 @@ User.init(
     underscored: true,
     defaultScope: {
       // Exclude passwordHash by default for security reasons
-      attributes: { exclude: ['passwordHash'] }
+      attributes: { exclude: ['passwordHash', 'disabled'] }
     },
     scopes: {
       // This scope disables the exclusion so that passwordHash is included
       withPassword: {
         attributes: {}
       }
+    },
+    // Optional scope to include disabled status if needed elsewhere
+    withStatus: {
+      attributes: { exclude: ['passwordHash'] } // Exclude only password
     }
   }
 );

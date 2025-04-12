@@ -1,7 +1,8 @@
 // File: util/middleware.js
 require('dotenv').config(); // To access process.env.SECRET
 const jwt = require('jsonwebtoken');
-const User = require('../models/user'); // Adjust path if needed, for userFinder
+const User = require('../models/user');
+const Session = require('../models/session');
 
 /**
  * Middleware to extract JWT from the Authorization header (Bearer scheme).
@@ -10,28 +11,16 @@ const User = require('../models/user'); // Adjust path if needed, for userFinder
  */
 const tokenExtractor = (req, res, next) => {
   const authorization = req.get('authorization'); // e.g., "Bearer eyJhbGciOiJIUzI1..."
+  req.decodedToken = null; // Initialize
+  req.tokenString = null; // Initialize raw token string
 
   if (authorization && authorization.toLowerCase().startsWith('bearer ')) {
     try {
-      // Extract the token part after "Bearer "
-      const token = authorization.substring(7);
-      // Verify the token using the secret key
-      // If verification fails (e.g., invalid signature, expired), it throws an error
-      req.decodedToken = jwt.verify(token, process.env.SECRET);
-      // req.decodedToken will now contain the payload, e.g., { username: 'user@example.com', id: 1, iat: ..., exp: ... }
+      req.tokenString = authorization.substring(7);
+      req.decodedToken = jwt.verify(req.tokenString, process.env.SECRET);
     } catch (error) {
-      // Errors like JsonWebTokenError, TokenExpiredError will be caught here
       console.error('Token verification failed:', error.message);
-      // Clear potentially invalid decoded token if verification fails
-      req.decodedToken = null;
-      // NOTE: We don't send a 401 response here directly.
-      // The route handler or subsequent middleware will decide if a token was required.
-      // This allows public routes to still work even if an invalid token is sent.
-      // The central error handler in index.js WILL catch JWT errors if they occur during verify.
     }
-  } else {
-    // No Authorization header or doesn't start with "Bearer "
-    req.decodedToken = null;
   }
   next(); // Proceed to the next middleware or route handler
 };
@@ -71,14 +60,49 @@ const userFinder = async (req, res, next) => {
 
 // Example of a specific "require authentication" middleware if not using userFinder globally
 // or if you want finer control per route group.
-const requireAuthCheck = (req, res, next) => {
+const requireAuthCheck = async (req, res, next) => {
+  // 1. Check if token was extracted and decoded successfully
   if (!req.decodedToken || !req.decodedToken.id) {
-    return res.status(401).json({ error: 'Token missing or invalid' });
+    return res
+      .status(401)
+      .json({ error: 'Token missing or invalid signature' });
   }
-  // If using userFinder globally, you might also check:
-  // if (!req.user) {
-  //     return res.status(401).json({ error: 'Authentication required: User not found for token' });
-  // }
+
+  // 2. Check if the token corresponds to an active session in the DB
+  const session = await Session.findOne({
+    where: {
+      token: req.tokenString // Check against the raw token string
+    }
+  });
+
+  if (!session) {
+    return res
+      .status(401)
+      .json({ error: 'Session expired or invalid. Please log in again.' });
+  }
+
+  // 3. Check if the user associated with the token/session is disabled
+  // We need to fetch the user including the 'disabled' field
+  const user = await User.findByPk(req.decodedToken.id, {
+    attributes: ['id', 'disabled'] // Only fetch necessary fields
+  });
+
+  if (!user) {
+    // Should ideally not happen if session exists, but good safety check
+    await session.destroy(); // Clean up orphaned session
+    return res
+      .status(401)
+      .json({ error: 'User associated with token not found' });
+  }
+
+  if (user.disabled) {
+    // User is disabled, invalidate the session and deny access
+    await session.destroy(); // Log out the disabled user by removing the session
+    return res.status(403).json({ error: 'Account disabled' });
+  }
+
+  // If all checks pass, attach user ID and proceed
+  req.userId = user.id; // Attach user ID for convenience in route handlers if needed
   next();
 };
 

@@ -2,20 +2,8 @@
 const router = require('express').Router();
 const { Op } = require('sequelize');
 
-const { Blog, User } = require('../models'); // Assuming index.js in models exports all
-// Or: const Blog = require('../models/blog'); const User = require('../models/user');
-
-// Middleware specifically for routes needing authenticated user
-const requireAuth = (req, res, next) => {
-  if (!req.decodedToken || !req.decodedToken.id) {
-    return res.status(401).json({ error: 'Token missing or invalid' });
-  }
-  // Optional: Check if req.user exists if using userFinder middleware globally
-  // if (!req.user) {
-  //     return res.status(401).json({ error: 'User not found for token' });
-  // }
-  next();
-};
+const { Blog, User } = require('../models');
+const { requireAuthCheck } = require('../util/middleware');
 
 // GET /api/blogs - List all blogs (Include User Info) with optional filtering by keyword in title
 router.get('/', async (req, res) => {
@@ -46,11 +34,11 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/blogs - Add a new blog (Protected Route)
-router.post('/', requireAuth, async (req, res, next) => {
+router.post('/', requireAuthCheck, async (req, res, next) => {
   // Add next for error handling
   try {
     // Wrap in try...catch
-    // <-- Apply requireAuth middleware
+    //
     const { author, url, title, likes, year } = req.body; // <-- Add year
 
     if (!url || !title) {
@@ -104,8 +92,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // DELETE /api/blogs/:id - Delete a blog (Protected - only owner should delete)
-router.delete('/:id', requireAuth, async (req, res) => {
-  // <-- Apply requireAuth
+router.delete('/:id', requireAuthCheck, async (req, res) => {
   const blogId = req.params.id;
   const userId = req.decodedToken.id; // ID of the user making the request
 
@@ -131,8 +118,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
 // PUT /api/blogs/:id - Update likes (Can be done by anyone logged in, or check ownership)
 // For simplicity, let's allow any logged-in user to update likes for now.
 // If only owner should update, add ownership check similar to DELETE.
-router.put('/:id', requireAuth, async (req, res) => {
-  // <-- Apply requireAuth
+router.put('/:id', requireAuthCheck, async (req, res) => {
   const blogId = req.params.id;
   const newLikes = req.body.likes;
 
